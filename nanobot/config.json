@@ -1,0 +1,14 @@
+{
+    "providers": {
+      "custom": {
+        "apiKey": "sk-va5W0H0rfdpApJmPWpYiNZ9j2vrY3IttJ0v9xCQ9yTixAwGi",     
+        "apiBase": "http://8.155.38.83:3000/v1",  
+        "model": "minimaxai/minimax-m2.1"      
+      }
+    },
+    "agents": {
+      "defaults": {
+        "model": "custom/minimaxai/minimax-m2.1"
+      }
+    }
+}

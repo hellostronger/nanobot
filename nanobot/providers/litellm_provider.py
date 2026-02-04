@@ -52,12 +52,18 @@ class LiteLLMProvider(LLMProvider):
             (api_base and "openrouter" in api_base)
         )
 
-        # 检测是否为 vLLM/自定义端点（非 OpenRouter 但有 api_base）
-        self.is_vllm = bool(api_base) and not self.is_openrouter
+        # 检测是否为 Custom 端点（使用 custom/ 前缀）
+        self.is_custom = default_model.startswith("custom/")
+
+        # 检测是否为 vLLM/自定义端点（非 OpenRouter 且非 Custom 但有 api_base）
+        self.is_vllm = bool(api_base) and not self.is_openrouter and not self.is_custom
 
         # 根据提供商类型设置环境变量
         if api_key:
-            if self.is_openrouter:
+            if self.is_custom:
+                # Custom 端点使用 OpenAI 兼容格式
+                os.environ["OPENAI_API_KEY"] = api_key
+            elif self.is_openrouter:
                 # OpenRouter 模式
                 os.environ["OPENROUTER_API_KEY"] = api_key
             elif self.is_vllm:
@@ -104,8 +110,12 @@ class LiteLLMProvider(LLMProvider):
         """
         model = model or self.default_model
 
+        # Custom 端点直接使用模型名称，不添加前缀（最先处理）
+        if self.is_custom:
+            model = model.replace("custom/", "", 1)
+
         # OpenRouter 需要 openrouter/ 前缀
-        if self.is_openrouter and not model.startswith("openrouter/"):
+        elif self.is_openrouter and not model.startswith("openrouter/"):
             model = f"openrouter/{model}"
 
         # 智谱 AI (Zhipu) 需要 zhipu/ 前缀
@@ -131,9 +141,12 @@ class LiteLLMProvider(LLMProvider):
             "temperature": temperature,
         }
 
-        # 自定义端点直接传递 api_base
+        # 自定义端点直接传递 api_base 和 provider
         if self.api_base:
             kwargs["api_base"] = self.api_base
+            # 对于自定义/vLLM 端点，需要指定 custom_llm_provider
+            if self.is_custom:
+                kwargs["custom_llm_provider"] = "openai"  # OpenAI 兼容格式
 
         # 如果有工具定义，添加到请求中
         if tools:
